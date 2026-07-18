@@ -178,6 +178,22 @@ class AgensFlowClient:
         except (ServerUnreachable, ServerRejected):
             return None
 
+    async def a_import_policy(self, req: PolicyImportRequest) -> PolicyImportResponse:
+        return await self._a_post_model(
+            "/langgraph/policy/import", req.model_dump(mode="json"), PolicyImportResponse
+        )
+
+    async def a_export_policy(self) -> PolicyExportResponse:
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as c:
+                r = await c.get(
+                    f"{self._base}/langgraph/policy/export", headers=self._headers
+                )
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            raise ServerUnreachable(str(e)) from e
+        self._raise_for_status(r)
+        return PolicyExportResponse.model_validate(r.json())
+
     # --- Private helpers -------------------------------------------------- #
 
     def _post_model(self, path: str, payload: dict, model_cls):

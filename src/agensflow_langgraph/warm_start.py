@@ -87,6 +87,62 @@ def export_policy(
     }
 
 
+async def aimport_policy(
+    path_or_url: str | Path,
+    *,
+    server_url: str | None = None,
+    tenant_key: str | None = None,
+) -> dict:
+    """Async variant of `import_policy`. Use inside an event loop — e.g. from a
+    notebook whose client talks to an in-process ASGI app (where httpx's
+    sync-context `ASGITransport` is unavailable).
+    """
+    raw = _read_source(str(path_or_url))
+    parsed = json.loads(raw)
+    if not isinstance(parsed, dict):
+        raise ValueError("policy JSON must be a top-level object")
+    if "policy" in parsed and isinstance(parsed.get("policy"), dict):
+        policy = parsed["policy"]
+    else:
+        policy = parsed
+    source_hash = hashlib.sha256(raw.encode()).hexdigest()[:32]
+
+    client = get_client(server_url, tenant_key)
+    resp = await client.a_import_policy(
+        PolicyImportRequest(policy=policy, source_hash=source_hash)
+    )
+    return {
+        "signatures_merged": resp.signatures_merged,
+        "actions_merged": resp.actions_merged,
+        "source_hash": source_hash,
+    }
+
+
+async def aexport_policy(
+    out_path: str | Path,
+    *,
+    server_url: str | None = None,
+    tenant_key: str | None = None,
+) -> dict:
+    """Async variant of `export_policy`."""
+    client = get_client(server_url, tenant_key)
+    resp = await client.a_export_policy()
+    payload = {
+        "contract_version": "v1",
+        "policy": resp.policy,
+        "n_signatures": resp.n_signatures,
+        "n_actions": resp.n_actions,
+    }
+    out = Path(out_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2, default=str))
+    return {
+        "n_signatures": resp.n_signatures,
+        "n_actions": resp.n_actions,
+        "path": str(out),
+    }
+
+
 def _read_source(loc: str) -> str:
     parsed = urlparse(loc)
     if parsed.scheme in ("http", "https"):
