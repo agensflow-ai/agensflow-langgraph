@@ -29,7 +29,7 @@ from agensflow_langgraph.warm_start import (
     import_policy,
 )
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 __all__ = [
     "agensflow",

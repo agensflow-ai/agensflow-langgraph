@@ -108,17 +108,7 @@ class AgensFlowClient:
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if signature is not None:
             params["signature"] = signature
-        try:
-            with httpx.Client(timeout=self._timeout) as c:
-                r = c.get(
-                    f"{self._base}/langgraph/decisions",
-                    params=params,
-                    headers=self._headers,
-                )
-        except (httpx.RequestError, httpx.TimeoutException) as e:
-            raise ServerUnreachable(str(e)) from e
-        self._raise_for_status(r)
-        return DecisionListResponse.model_validate(r.json())
+        return self._get_model("/langgraph/decisions", DecisionListResponse, params=params)
 
     def import_policy(self, req: PolicyImportRequest) -> PolicyImportResponse:
         return self._post_model(
@@ -127,16 +117,7 @@ class AgensFlowClient:
 
     def export_policy(self) -> PolicyExportResponse:
         """Fetch the tenant's full policy in the shape /policy/import accepts."""
-        try:
-            with httpx.Client(timeout=self._timeout) as c:
-                r = c.get(
-                    f"{self._base}/langgraph/policy/export",
-                    headers=self._headers,
-                )
-        except (httpx.RequestError, httpx.TimeoutException) as e:
-            raise ServerUnreachable(str(e)) from e
-        self._raise_for_status(r)
-        return PolicyExportResponse.model_validate(r.json())
+        return self._get_model("/langgraph/policy/export", PolicyExportResponse)
 
     # --- Async ------------------------------------------------------------ #
 
@@ -184,17 +165,12 @@ class AgensFlowClient:
         )
 
     async def a_export_policy(self) -> PolicyExportResponse:
-        try:
-            async with httpx.AsyncClient(timeout=self._timeout) as c:
-                r = await c.get(
-                    f"{self._base}/langgraph/policy/export", headers=self._headers
-                )
-        except (httpx.RequestError, httpx.TimeoutException) as e:
-            raise ServerUnreachable(str(e)) from e
-        self._raise_for_status(r)
-        return PolicyExportResponse.model_validate(r.json())
+        return await self._a_get_model("/langgraph/policy/export", PolicyExportResponse)
 
     # --- Private helpers -------------------------------------------------- #
+    # All request-making funnels through these four helpers. Subclasses can
+    # override any of them (e.g. to bind an ASGI transport for notebook /
+    # in-process testing) and the whole client picks up the change.
 
     def _post_model(self, path: str, payload: dict, model_cls):
         try:
@@ -210,6 +186,26 @@ class AgensFlowClient:
             async with httpx.AsyncClient(timeout=self._timeout) as c:
                 r = await c.post(
                     f"{self._base}{path}", json=payload, headers=self._headers
+                )
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            raise ServerUnreachable(str(e)) from e
+        self._raise_for_status(r)
+        return model_cls.model_validate(r.json())
+
+    def _get_model(self, path: str, model_cls, params: dict | None = None):
+        try:
+            with httpx.Client(timeout=self._timeout) as c:
+                r = c.get(f"{self._base}{path}", params=params, headers=self._headers)
+        except (httpx.RequestError, httpx.TimeoutException) as e:
+            raise ServerUnreachable(str(e)) from e
+        self._raise_for_status(r)
+        return model_cls.model_validate(r.json())
+
+    async def _a_get_model(self, path: str, model_cls, params: dict | None = None):
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout) as c:
+                r = await c.get(
+                    f"{self._base}{path}", params=params, headers=self._headers
                 )
         except (httpx.RequestError, httpx.TimeoutException) as e:
             raise ServerUnreachable(str(e)) from e
