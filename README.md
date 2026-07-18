@@ -3,7 +3,11 @@
 Decorator-based routing for LangGraph agents. Learn which model in your declared
 pool each node of your graph should use — automatically, per node, from feedback.
 
-**Status:** v0.1.1 (alpha).
+<a target="_blank" href="https://colab.research.google.com/github/agensflow-ai/agensflow-langgraph/blob/main/notebooks/quickstart.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
+
+**Status:** v0.1.2 (alpha).
 
 ## The free-tier bundle
 
