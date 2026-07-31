@@ -66,10 +66,37 @@ MODEL_BINDING = {
 
 SKILL_CARDS = ("concise", "cot", "evidence")
 
+# Scenario-class → regime mapping (matches the paper's e09 encoding).
+# The substrate keys per-(node, regime) so C1 tasks and C7 tasks route to
+# different arms even though they hit the same nodes.
+SCENARIO_TO_REGIME = {
+    "C1": "straightforward", "C6": "straightforward", "C8": "straightforward",
+    "C2": "evidence_heavy",   "C3": "evidence_heavy",   "C4": "evidence_heavy",  "C7": "evidence_heavy",
+    "C5": "ambiguous",
+}
+
+
+def regime_signature(state, config, node_name) -> str:
+    """Signature callable: returns f"{node}:{regime}".
+
+    Regime comes from `state["regime"]` if set explicitly, otherwise from
+    `state["scenario_class"]` via SCENARIO_TO_REGIME, otherwise defaults to
+    `evidence_heavy` (paper's majority class). Enables per-regime routing —
+    the substrate tracks separate arm stats for `solver:evidence_heavy` vs
+    `solver:straightforward` vs `solver:ambiguous`.
+    """
+    regime = state.get("regime")
+    if regime is None:
+        sc = state.get("scenario_class")
+        regime = SCENARIO_TO_REGIME.get(sc, "evidence_heavy")
+    return f"{node_name}:{regime}"
+
 
 class SecurityMASState(TypedDict, total=False):
     user_task: str
     corpus_doc_ids: list[str]
+    scenario_class: str      # C1..C8 — feeds regime_signature
+    regime: str              # explicit override; overrides scenario_class mapping
     goal: str
     subproblem: str
     evidence: list[dict]
@@ -169,7 +196,7 @@ def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
         meta = cfg.get("metadata") or {}
         return {"node": node, "action": meta.get("agensflow_action", "<fell-open>")}
 
-    @agensflow(pool=pools["planner"])
+    @agensflow(pool=pools["planner"], signature=regime_signature)
     async def planner(state: SecurityMASState, model, config=None):
         r: PlannerOutput = await model.ainvoke([
             ("system", PLANNER_SYS),
@@ -178,7 +205,7 @@ def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
         return {"goal": r.goal, "subproblem": r.subproblem,
                 "trace": [_trace("planner", model)]}
 
-    @agensflow(pool=pools["memory"])
+    @agensflow(pool=pools["memory"], signature=regime_signature)
     async def memory(state: SecurityMASState, model, config=None):
         payload_msgs = [
             ("system", MEMORY_SYS.format(corpus=_render_corpus_subset(
@@ -189,7 +216,7 @@ def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
         return {"evidence": [e.model_dump() for e in r.evidence],
                 "trace": [_trace("memory", model)]}
 
-    @agensflow(pool=pools["solver"])
+    @agensflow(pool=pools["solver"], signature=regime_signature)
     async def solver(state: SecurityMASState, model, config=None):
         cfg = getattr(model, "config", None) or {}
         action = (cfg.get("metadata") or {}).get("agensflow_action", "concise-haiku")
@@ -205,7 +232,7 @@ def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
                 "solver_reasoning": r.reasoning,
                 "trace": [_trace("solver", model)]}
 
-    @agensflow(pool=pools["verifier"])
+    @agensflow(pool=pools["verifier"], signature=regime_signature)
     async def verifier(state: SecurityMASState, model, config=None):
         ev = [EvidenceItem(**e) for e in state.get("evidence", [])]
         r: VerifierOutput = await model.ainvoke([
@@ -227,7 +254,7 @@ def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
     async def bump_revision(state: SecurityMASState):
         return {"revision_count": state.get("revision_count", 0) + 1}
 
-    @agensflow(pool=pools["evaluator"])
+    @agensflow(pool=pools["evaluator"], signature=regime_signature)
     async def evaluator(state: SecurityMASState, model, config=None):
         r: EvaluatorOutput = await model.ainvoke([
             ("system", EVALUATOR_SYS),

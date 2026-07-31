@@ -1,115 +1,326 @@
 {
   "contract_version": "v1",
   "policy": {
-    "planner": {
+    "planner:evidence_heavy": {
       "default": {
-        "visits": 142.0,
-        "reward_mean": 0.6747399838718627,
-        "reward_m2": 6.620419093653911,
-        "failure_count": 0.0
+        "visits": 81,
+        "reward_mean": 0.6333286197634174,
+        "reward_m2": 4.296050073483664,
+        "failure_count": 0
       }
     },
-    "memory": {
+    "memory:evidence_heavy": {
       "use": {
-        "visits": 87.0,
-        "reward_mean": 0.6529116230813808,
-        "reward_m2": 4.893990623310427,
-        "failure_count": 0.0
+        "visits": 52,
+        "reward_mean": 0.6077886101205636,
+        "reward_m2": 3.1375549367014632,
+        "failure_count": 1
       },
       "skip": {
-        "visits": 73.0,
-        "reward_mean": 0.6222556503689148,
-        "reward_m2": 3.929616267929139,
-        "failure_count": 0.0
+        "visits": 49,
+        "reward_mean": 0.5596810802833532,
+        "reward_m2": 2.9952284701561624,
+        "failure_count": 0
       }
     },
-    "solver": {
+    "solver:evidence_heavy": {
       "concise-haiku": {
-        "visits": 44.0,
-        "reward_mean": 0.5973015500021184,
-        "reward_m2": 2.8299835489056813,
-        "failure_count": 0.0
+        "visits": 25,
+        "reward_mean": 0.47273434004474274,
+        "reward_m2": 1.2775901401662175,
+        "failure_count": 0
       },
       "concise-fast": {
-        "visits": 30.0,
-        "reward_mean": 0.49095543857853197,
-        "reward_m2": 1.6855397204305298,
-        "failure_count": 0.0
+        "visits": 28,
+        "reward_mean": 0.4876225916353384,
+        "reward_m2": 1.4796245844935696,
+        "failure_count": 0
       },
       "concise-mini": {
-        "visits": 26.0,
-        "reward_mean": 0.44005459997047913,
-        "reward_m2": 1.2979838681300793,
-        "failure_count": 0.0
+        "visits": 25,
+        "reward_mean": 0.43267296296296287,
+        "reward_m2": 1.211829157234225,
+        "failure_count": 0
       },
       "cot-haiku": {
-        "visits": 42.0,
-        "reward_mean": 0.5868804676741547,
-        "reward_m2": 2.931785885756853,
-        "failure_count": 0.0
+        "visits": 27,
+        "reward_mean": 0.4753543895747599,
+        "reward_m2": 1.5094908598501242,
+        "failure_count": 0
       },
       "cot-fast": {
-        "visits": 31.0,
-        "reward_mean": 0.4991710948527982,
-        "reward_m2": 1.7381306822745803,
-        "failure_count": 0.0
+        "visits": 27,
+        "reward_mean": 0.4750237911522633,
+        "reward_m2": 1.2880078361931837,
+        "failure_count": 0
       },
       "cot-mini": {
-        "visits": 27.0,
-        "reward_mean": 0.4568652182118257,
-        "reward_m2": 1.4403983862102347,
-        "failure_count": 0.0
+        "visits": 26,
+        "reward_mean": 0.4661624849759616,
+        "reward_m2": 1.3216756716292264,
+        "failure_count": 0
       },
       "evidence-haiku": {
-        "visits": 35.0,
-        "reward_mean": 0.5242403443774094,
-        "reward_m2": 1.9322745354474875,
-        "failure_count": 0.0
+        "visits": 25,
+        "reward_mean": 0.45621106870229006,
+        "reward_m2": 1.2130021332708532,
+        "failure_count": 0
       },
       "evidence-fast": {
-        "visits": 36.0,
-        "reward_mean": 0.5409989831863188,
-        "reward_m2": 2.4155118081392883,
-        "failure_count": 0.0
+        "visits": 30,
+        "reward_mean": 0.5154607142857143,
+        "reward_m2": 2.157128167736678,
+        "failure_count": 0
       },
       "evidence-mini": {
-        "visits": 41.0,
-        "reward_mean": 0.5782337626750312,
-        "reward_m2": 2.4749299798653595,
-        "failure_count": 0.0
+        "visits": 35,
+        "reward_mean": 0.5676267682072829,
+        "reward_m2": 2.1320842925759256,
+        "failure_count": 0
       }
     },
-    "verifier": {
+    "verifier:evidence_heavy": {
       "fast": {
-        "visits": 48.0,
-        "reward_mean": 0.5498837907806162,
-        "reward_m2": 2.4981098481641184,
-        "failure_count": 0.0
+        "visits": 35,
+        "reward_mean": 0.49528602581219405,
+        "reward_m2": 1.8178770952583407,
+        "failure_count": 0
       },
       "haiku": {
-        "visits": 79.0,
-        "reward_mean": 0.6494584123728101,
-        "reward_m2": 4.36027027568166,
-        "failure_count": 1.0
+        "visits": 54,
+        "reward_mean": 0.6088226891421337,
+        "reward_m2": 3.3244654861005225,
+        "failure_count": 2
       },
       "skip": {
-        "visits": 65.0,
-        "reward_mean": 0.6186672729371276,
-        "reward_m2": 3.987411892422391,
-        "failure_count": 0.0
+        "visits": 39,
+        "reward_mean": 0.551169314381271,
+        "reward_m2": 2.193448963230519,
+        "failure_count": 0
       }
     },
-    "evaluator": {
+    "evaluator:evidence_heavy": {
       "default": {
-        "visits": 139.0,
-        "reward_mean": 0.6638737725403131,
-        "reward_m2": 6.939648939373843,
-        "failure_count": 0.0
+        "visits": 80,
+        "reward_mean": 0.6249592875318066,
+        "reward_m2": 4.5242386754519694,
+        "failure_count": 0
+      }
+    },
+    "planner:straightforward": {
+      "default": {
+        "visits": 65,
+        "reward_mean": 0.6172732720178373,
+        "reward_m2": 3.7426616051878563,
+        "failure_count": 0
+      }
+    },
+    "memory:straightforward": {
+      "use": {
+        "visits": 41,
+        "reward_mean": 0.5479548954703835,
+        "reward_m2": 2.7466880316870514,
+        "failure_count": 0
+      },
+      "skip": {
+        "visits": 44,
+        "reward_mean": 0.5991538613749435,
+        "reward_m2": 2.7416148178835438,
+        "failure_count": 0
+      }
+    },
+    "solver:straightforward": {
+      "concise-haiku": {
+        "visits": 32,
+        "reward_mean": 0.5279825148809525,
+        "reward_m2": 2.1513001543238017,
+        "failure_count": 0
+      },
+      "concise-fast": {
+        "visits": 22,
+        "reward_mean": 0.4274733723372336,
+        "reward_m2": 1.2155807764461157,
+        "failure_count": 0
+      },
+      "concise-mini": {
+        "visits": 21,
+        "reward_mean": 0.4161293879731379,
+        "reward_m2": 1.1403941330324925,
+        "failure_count": 0
+      },
+      "cot-haiku": {
+        "visits": 28,
+        "reward_mean": 0.4890383184523809,
+        "reward_m2": 2.137325044217355,
+        "failure_count": 0
+      },
+      "cot-fast": {
+        "visits": 24,
+        "reward_mean": 0.45302809343434336,
+        "reward_m2": 1.6334243208309422,
+        "failure_count": 0
+      },
+      "cot-mini": {
+        "visits": 21,
+        "reward_mean": 0.38635055637375226,
+        "reward_m2": 1.0657081499920678,
+        "failure_count": 0
+      },
+      "evidence-haiku": {
+        "visits": 30,
+        "reward_mean": 0.4999830065359475,
+        "reward_m2": 1.967871855785196,
+        "failure_count": 0
+      },
+      "evidence-fast": {
+        "visits": 26,
+        "reward_mean": 0.47631345471903985,
+        "reward_m2": 1.5650290243631217,
+        "failure_count": 0
+      },
+      "evidence-mini": {
+        "visits": 26,
+        "reward_mean": 0.48842740082244795,
+        "reward_m2": 1.6768103592978576,
+        "failure_count": 0
+      }
+    },
+    "verifier:straightforward": {
+      "fast": {
+        "visits": 33,
+        "reward_mean": 0.5273889801630764,
+        "reward_m2": 1.9816714144589507,
+        "failure_count": 0
+      },
+      "haiku": {
+        "visits": 38,
+        "reward_mean": 0.5291792763157895,
+        "reward_m2": 2.624634841604989,
+        "failure_count": 0
+      },
+      "skip": {
+        "visits": 39,
+        "reward_mean": 0.5363888199614006,
+        "reward_m2": 2.8550776296145095,
+        "failure_count": 0
+      }
+    },
+    "evaluator:straightforward": {
+      "default": {
+        "visits": 65,
+        "reward_mean": 0.6057963270963271,
+        "reward_m2": 4.29032471868019,
+        "failure_count": 0
+      }
+    },
+    "planner:ambiguous": {
+      "default": {
+        "visits": 36,
+        "reward_mean": 0.5927949322089948,
+        "reward_m2": 3.0103229733450223,
+        "failure_count": 0
+      }
+    },
+    "memory:ambiguous": {
+      "use": {
+        "visits": 34,
+        "reward_mean": 0.5883382352941176,
+        "reward_m2": 2.634289487278246,
+        "failure_count": 0
+      },
+      "skip": {
+        "visits": 20,
+        "reward_mean": 0.3199302884615385,
+        "reward_m2": 1.6788188524454515,
+        "failure_count": 0
+      }
+    },
+    "solver:ambiguous": {
+      "concise-haiku": {
+        "visits": 27,
+        "reward_mean": 0.5269887706855793,
+        "reward_m2": 1.8525297504369744,
+        "failure_count": 0
+      },
+      "concise-fast": {
+        "visits": 20,
+        "reward_mean": 0.4054804347826087,
+        "reward_m2": 0.9147482168005672,
+        "failure_count": 0
+      },
+      "concise-mini": {
+        "visits": 20,
+        "reward_mean": 0.41352391304347835,
+        "reward_m2": 0.885951865193762,
+        "failure_count": 0
+      },
+      "cot-haiku": {
+        "visits": 27,
+        "reward_mean": 0.5303059581320452,
+        "reward_m2": 1.878113993504078,
+        "failure_count": 0
+      },
+      "cot-fast": {
+        "visits": 20,
+        "reward_mean": 0.39717122093023255,
+        "reward_m2": 0.9083020564730935,
+        "failure_count": 0
+      },
+      "cot-mini": {
+        "visits": 20,
+        "reward_mean": 0.3893590625000001,
+        "reward_m2": 0.9239691624980468,
+        "failure_count": 0
+      },
+      "evidence-haiku": {
+        "visits": 20,
+        "reward_mean": 0.39220065789473696,
+        "reward_m2": 0.8313763976887119,
+        "failure_count": 0
+      },
+      "evidence-fast": {
+        "visits": 20,
+        "reward_mean": 0.36489154411764707,
+        "reward_m2": 0.8610774240295201,
+        "failure_count": 0
+      },
+      "evidence-mini": {
+        "visits": 20,
+        "reward_mean": 0.4072117647058824,
+        "reward_m2": 0.8513749996215401,
+        "failure_count": 0
+      }
+    },
+    "verifier:ambiguous": {
+      "fast": {
+        "visits": 20,
+        "reward_mean": 0.39586666666666664,
+        "reward_m2": 0.7858556444444444,
+        "failure_count": 0
+      },
+      "haiku": {
+        "visits": 27,
+        "reward_mean": 0.5237976992143657,
+        "reward_m2": 1.7229666368015173,
+        "failure_count": 1
+      },
+      "skip": {
+        "visits": 27,
+        "reward_mean": 0.4858226495726495,
+        "reward_m2": 2.3633081352728462,
+        "failure_count": 0
+      }
+    },
+    "evaluator:ambiguous": {
+      "default": {
+        "visits": 34,
+        "reward_mean": 0.5569922385620916,
+        "reward_m2": 3.3544875054171204,
+        "failure_count": 0
       }
     }
   },
-  "n_signatures": 5,
-  "n_actions": 16,
-  "source": "translated paper pkl + 60 tasks \u00d7 2 epochs on modern models (haiku-4.5, sonnet-5, inkling)",
-  "provenance_report": "reports/verify_20260719_162928.json"
+  "n_signatures": 15,
+  "n_actions": 48,
+  "source": "paper priors (security_v1.json) + 119 real runs from verify_20260719_162928.json, per-(node, regime) attributed"
 }

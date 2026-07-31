@@ -335,6 +335,7 @@ async def _run_one(task, compiled, key: str) -> dict:
         return await compiled.ainvoke(
             {"user_task": task.user_task,
              "corpus_doc_ids": task.corpus_doc_ids,
+             "scenario_class": task.scenario_class,
              "trace": [], "revision_count": 0},
             config={"configurable": {"thread_id": thread_id}},
         )

@@ -43,7 +43,7 @@ from agensflow_langgraph.signature import (
 def agensflow(
     pool: dict[str, Any],
     *,
-    signature: str | None = None,
+    signature: str | Callable[..., str] | None = None,
     node_name: str | None = None,
     fallback_action: str | None = None,
     fail_closed: bool = False,
@@ -58,7 +58,14 @@ def agensflow(
     Parameters:
         pool: {opaque_key: Runnable} — the models to route among. Every value must be
             a LangChain Runnable (or anything with `.with_config(...)` + `.invoke()`).
-        signature: Explicit signature override. Bypasses the auto-derivation ladder.
+        signature: Explicit signature. Two shapes accepted:
+            * `str` — static override, same signature every invocation.
+            * `Callable[[state, config, node_name], str]` — invoked per-invocation
+              with the graph state, RunnableConfig, and the resolved node name;
+              returns the signature to route on. Enables per-regime routing:
+              pool stays flat, but signature carries task shape (e.g.
+              `lambda s, c, n: f"{n}:{s.get('regime', 'default')}"`).
+            * `None` (default) — auto-derive from LangGraph node name.
         node_name: Explicit node name — takes priority over the metadata-derived name.
         fallback_action: Which pool key to use if the policy server is unreachable
             (fail-open). Defaults to `next(iter(pool))`. Set `fail_closed=True` to raise
@@ -85,12 +92,26 @@ def agensflow(
         sig_inspect = inspect.signature(fn)
         forwards_config = "config" in sig_inspect.parameters
 
+        def _resolve_signature(state: Any, config: dict | None) -> str | None:
+            """If `signature` is a callable, invoke per-invocation with the current
+            state + config + resolved node_name. Return None to fall through to the
+            auto-derivation ladder."""
+            if signature is None or isinstance(signature, str):
+                return signature
+            # Callable path — pass state, config, and the resolved node name.
+            resolved_node = node_name or (fn.__name__ if fn else "default")
+            try:
+                return signature(state, config, resolved_node)
+            except TypeError:
+                # Backward-compat: accept 2-arg callables (state, config).
+                return signature(state, config)
+
         def _build_context(state: Any, config: dict | None):
             sig = derive_signature(
                 config,
                 fn=fn,
                 explicit_node_name=node_name,
-                explicit_signature=signature,
+                explicit_signature=_resolve_signature(state, config),
             )
             meta = (config or {}).get("metadata") or {}
             conf = (config or {}).get("configurable") or {}

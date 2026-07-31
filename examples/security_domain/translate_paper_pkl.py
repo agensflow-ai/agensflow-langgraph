@@ -126,21 +126,35 @@ def _empty():
 
 
 def translate(pkl_path: Path, *, max_visits: int | None = None) -> dict:
-    """Translate paper pkl → OSS-shaped policy.
+    """Translate paper pkl → OSS-shaped policy WITH per-regime signatures.
 
-    If `max_visits` is set, each arm's visits are capped at `max_visits`.
-    reward_m2 and failure_count are scaled proportionally so the empirical
-    variance (m2 / (n - 1)) is approximately preserved. reward_mean is
-    exact (unchanged). This gives UCB1 room to explore vs the paper's ~275
-    visits per arm which choke off exploration entirely on a 3% mean spread.
+    Paper signature tuples are 12-wide: (regime, activation_flags[7], calibration[4]).
+    The first element is the regime label — one of `evidence_heavy`,
+    `straightforward`, `ambiguous`. We collapse the other 11 dimensions but
+    PRESERVE regime, producing OSS signatures of the form `f"{node}:{regime}"`
+    (e.g., `solver:evidence_heavy`).
+
+    This gives the substrate per-regime routing: for each (node, regime) pair,
+    it tracks arm stats separately, so `solver:evidence_heavy` can prefer a
+    different arm than `solver:straightforward`. Matches the paper's routing
+    behavior in the flat OSS substrate.
+
+    If `max_visits` is set, each (signature, arm) cell's visits are capped;
+    reward_m2 and failure_count scale proportionally so the empirical variance
+    stays consistent. reward_mean is exact.
     """
     with open(pkl_path, "rb") as f:
         paper = pickle.load(f)
 
-    aggregated: dict[str, dict[str, dict]] = defaultdict(lambda: defaultdict(_empty))
+    # aggregated[(oss_node, regime)][arm] = accumulator
+    aggregated: dict[tuple[str, str], dict[str, dict]] = defaultdict(lambda: defaultdict(_empty))
     dropped: dict[str, int] = defaultdict(int)
+    regime_counts: dict[str, int] = defaultdict(int)
 
     for sig_tuple, node in paper.items():
+        # Paper signature is a tuple starting with regime label
+        regime = sig_tuple[0] if isinstance(sig_tuple, tuple) and sig_tuple else "default"
+        regime_counts[regime] += 1
         for action_key, visits in node.action_visits.items():
             classified = _classify(action_key)
             if classified is None:
@@ -150,17 +164,18 @@ def translate(pkl_path: Path, *, max_visits: int | None = None) -> dict:
             value_sum = node.action_value_sums.get(action_key, 0.0)
             reward_m2 = node.action_reward_m2.get(action_key, 0.0)
             failure_count = node.action_failure_count.get(action_key, 0)
-            aggregated[oss_node][oss_arm] = _welford_merge(
-                aggregated[oss_node][oss_arm],
+            aggregated[(oss_node, regime)][oss_arm] = _welford_merge(
+                aggregated[(oss_node, regime)][oss_arm],
                 {"visits": visits, "value_sum": value_sum,
                  "reward_m2": reward_m2, "failure_count": failure_count},
             )
 
     # Convert value_sum → reward_mean for the OSS wire format, applying
-    # visit cap if configured.
+    # visit cap if configured. Signature keys are now `f"{node}:{regime}"`.
     policy: dict[str, dict[str, dict]] = {}
-    for node_name, arms in aggregated.items():
-        policy[node_name] = {}
+    for (node_name, regime), arms in aggregated.items():
+        sig_key = f"{node_name}:{regime}"
+        policy[sig_key] = {}
         for arm_key, stats in arms.items():
             visits = stats["visits"]
             mean = (stats["value_sum"] / visits) if visits else 0.0
@@ -173,14 +188,14 @@ def translate(pkl_path: Path, *, max_visits: int | None = None) -> dict:
                 reward_m2 = reward_m2 * scale
                 failure_count = int(round(failure_count * scale))
 
-            policy[node_name][arm_key] = {
+            policy[sig_key][arm_key] = {
                 "visits": int(visits),
                 "reward_mean": float(mean),
                 "reward_m2": float(reward_m2),
                 "failure_count": int(failure_count),
             }
 
-    return {"policy": policy, "dropped": dict(dropped)}
+    return {"policy": policy, "dropped": dict(dropped), "regime_counts": dict(regime_counts)}
 
 
 def main():
