@@ -1,0 +1,115 @@
+{
+  "contract_version": "v1",
+  "policy": {
+    "planner": {
+      "default": {
+        "visits": 142.0,
+        "reward_mean": 0.6747399838718627,
+        "reward_m2": 6.620419093653911,
+        "failure_count": 0.0
+      }
+    },
+    "memory": {
+      "use": {
+        "visits": 87.0,
+        "reward_mean": 0.6529116230813808,
+        "reward_m2": 4.893990623310427,
+        "failure_count": 0.0
+      },
+      "skip": {
+        "visits": 73.0,
+        "reward_mean": 0.6222556503689148,
+        "reward_m2": 3.929616267929139,
+        "failure_count": 0.0
+      }
+    },
+    "solver": {
+      "concise-haiku": {
+        "visits": 44.0,
+        "reward_mean": 0.5973015500021184,
+        "reward_m2": 2.8299835489056813,
+        "failure_count": 0.0
+      },
+      "concise-fast": {
+        "visits": 30.0,
+        "reward_mean": 0.49095543857853197,
+        "reward_m2": 1.6855397204305298,
+        "failure_count": 0.0
+      },
+      "concise-mini": {
+        "visits": 26.0,
+        "reward_mean": 0.44005459997047913,
+        "reward_m2": 1.2979838681300793,
+        "failure_count": 0.0
+      },
+      "cot-haiku": {
+        "visits": 42.0,
+        "reward_mean": 0.5868804676741547,
+        "reward_m2": 2.931785885756853,
+        "failure_count": 0.0
+      },
+      "cot-fast": {
+        "visits": 31.0,
+        "reward_mean": 0.4991710948527982,
+        "reward_m2": 1.7381306822745803,
+        "failure_count": 0.0
+      },
+      "cot-mini": {
+        "visits": 27.0,
+        "reward_mean": 0.4568652182118257,
+        "reward_m2": 1.4403983862102347,
+        "failure_count": 0.0
+      },
+      "evidence-haiku": {
+        "visits": 35.0,
+        "reward_mean": 0.5242403443774094,
+        "reward_m2": 1.9322745354474875,
+        "failure_count": 0.0
+      },
+      "evidence-fast": {
+        "visits": 36.0,
+        "reward_mean": 0.5409989831863188,
+        "reward_m2": 2.4155118081392883,
+        "failure_count": 0.0
+      },
+      "evidence-mini": {
+        "visits": 41.0,
+        "reward_mean": 0.5782337626750312,
+        "reward_m2": 2.4749299798653595,
+        "failure_count": 0.0
+      }
+    },
+    "verifier": {
+      "fast": {
+        "visits": 48.0,
+        "reward_mean": 0.5498837907806162,
+        "reward_m2": 2.4981098481641184,
+        "failure_count": 0.0
+      },
+      "haiku": {
+        "visits": 79.0,
+        "reward_mean": 0.6494584123728101,
+        "reward_m2": 4.36027027568166,
+        "failure_count": 1.0
+      },
+      "skip": {
+        "visits": 65.0,
+        "reward_mean": 0.6186672729371276,
+        "reward_m2": 3.987411892422391,
+        "failure_count": 0.0
+      }
+    },
+    "evaluator": {
+      "default": {
+        "visits": 139.0,
+        "reward_mean": 0.6638737725403131,
+        "reward_m2": 6.939648939373843,
+        "failure_count": 0.0
+      }
+    }
+  },
+  "n_signatures": 5,
+  "n_actions": 16,
+  "source": "translated paper pkl + 60 tasks \u00d7 2 epochs on modern models (haiku-4.5, sonnet-5, inkling)",
+  "provenance_report": "reports/verify_20260719_162928.json"
+}

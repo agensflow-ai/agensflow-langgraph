@@ -54,3 +54,7 @@ langsmith_traces/
 
 # Jupyter notebook checkpoints
 .ipynb_checkpoints/
+
+# Per-run smoke/convergence reports (contain LLM-generated task content +
+# judge reasoning; regenerate with `verify_warmstart.py`)
+examples/security_domain/reports/

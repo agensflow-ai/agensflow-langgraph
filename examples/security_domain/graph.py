@@ -1,13 +1,27 @@
-"""security_domain MAS — same parallel_critic topology, but the MEMORY node
-retrieves from a per-task subset of the security-advisory corpus.
+"""security_domain MAS — linear topology with skill × model factored solver.
 
-Reuses the schemas + prompts from `examples.parallel_critic_mas.prompts`
-verbatim — only the memory node's corpus threading differs (per-task
-subset instead of one global corpus render).
+Faithful to the paper's e09 action space:
+  * planner  → 1 arm
+  * memory   → 2 arms: use, skip
+  * solver   → 9 arms: 3 skill cards × 3 model tiers
+  * verifier → 3 arms: fast, haiku, skip
+  * evaluator → 1 arm
 
-State adds one field vs parallel_critic_mas:
-  * `corpus_doc_ids: list[str]`  — which docs to expose to memory for
-    this task (set from SecurityTask.corpus_doc_ids at invocation).
+Model tier binding (arm-key suffix → OpenRouter model):
+  * haiku → anthropic/claude-haiku-4.5
+  * fast  → thinkingmachines/inkling
+  * mini  → anthropic/claude-sonnet-5   (paper's "mini" tier upgraded to
+                                         a modern Anthropic model — keeps
+                                         Anthropic + ThinkingMachines as the
+                                         only two task-pool families, so the
+                                         judge panel's xAI/OpenAI/Qwen is
+                                         fully family-disjoint)
+
+Topology:
+  START → planner → memory-or-skip → solver → verifier-or-skip
+                                                   ↓
+                                        gate: supported/partial → evaluator → END
+                                              unsupported (≤2 revs) → solver
 """
 
 from __future__ import annotations
@@ -23,9 +37,8 @@ from langgraph.graph.message import add_messages
 
 from agensflow_langgraph import agensflow
 
-from ..parallel_critic_mas.prompts import (
-    CRITIC_SYS,
-    CriticOutput,
+from .corpus import CORPUS, get_corpus_subset
+from .prompts import (
     EVALUATOR_SYS,
     EvaluatorOutput,
     EvidenceItem,
@@ -33,85 +46,115 @@ from ..parallel_critic_mas.prompts import (
     MemoryOutput,
     PLANNER_SYS,
     PlannerOutput,
-    SOLVER_SYS,
+    SOLVER_SYSTEMS,
     SolverOutput,
     VERIFIER_SYS,
     VerifierOutput,
-    format_critic_input,
     format_evaluator_input,
     format_memory_input,
     format_planner_input,
     format_solver_input,
     format_verifier_input,
 )
-from .corpus import CORPUS, get_corpus_subset
+
+
+MODEL_BINDING = {
+    "haiku": "anthropic/claude-haiku-4.5",
+    "fast":  "thinkingmachines/inkling",
+    "mini":  "anthropic/claude-sonnet-5",
+}
+
+SKILL_CARDS = ("concise", "cot", "evidence")
 
 
 class SecurityMASState(TypedDict, total=False):
     user_task: str
-    corpus_doc_ids: list[str]     # NEW: per-task doc subset
-
+    corpus_doc_ids: list[str]
     goal: str
     subproblem: str
     evidence: list[dict]
     draft_answer: str
     solver_reasoning: str
-    reasoning_score: float
-    reasoning_issues: list[str]
     verifier_verdict: str
     ungrounded_claims: list[str]
+    revision_count: int
     final_answer: str
     evaluator_reasoning: str
-
     messages: Annotated[list, add_messages]
     trace: Annotated[list, operator.add]
 
 
-def _or(model_id: str) -> ChatOpenAI:
+def _or(model_id: str, schema=None):
+    """OpenRouter-backed ChatOpenAI.
+
+    The `default_headers` are load-bearing: OpenRouter uses HTTP-Referer +
+    X-Title for app-tier attribution and routing. Without them, requests are
+    served from a shared-throughput pool with materially tighter rate limits.
+    """
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
         raise RuntimeError("OPENROUTER_API_KEY not set — required for security_domain.")
-    return ChatOpenAI(
+    llm = ChatOpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=key,
         model=model_id,
         temperature=0.0,
         max_retries=2,
+        default_headers={
+            "HTTP-Referer": "https://agensflow.ai",
+            "X-Title": "AgensFlow security_domain",
+        },
     )
+    return llm.with_structured_output(schema, method="function_calling") if schema else llm
+
+
+def _skip_runnable(default_output: Any):
+    """A no-op Runnable that returns `default_output` regardless of input.
+
+    Used as the arm binding for 'skip' choices — when the substrate picks
+    skip, the node produces this default and moves on with no LLM call.
+    """
+    from langchain_core.runnables import RunnableLambda
+    return RunnableLambda(lambda _: default_output)
 
 
 def build_pools() -> dict[str, dict[str, Any]]:
-    def wrap(model_id: str, schema):
-        return _or(model_id).with_structured_output(schema, method="function_calling")
+    """Return per-node pools matching the paper's e09 action space.
 
-    # Same shape as parallel_critic_mas — this is intentional so the
-    # converged security_v1.json is portable to the notebook's identical
-    # topology.
+    Solver keys use `{skill}-{model_tier}` format so the paper-pkl translator
+    can map paper's `solver_{skill}_{tier}` → OSS `{skill}-{tier}`.
+    """
+    planner_pool = {
+        "default": _or(MODEL_BINDING["mini"], PlannerOutput),
+    }
+
+    memory_pool = {
+        "use":  _or(MODEL_BINDING["fast"], MemoryOutput),
+        "skip": _skip_runnable(MemoryOutput(evidence=[])),
+    }
+
+    solver_pool: dict[str, Any] = {}
+    for skill in SKILL_CARDS:
+        for tier in ("haiku", "fast", "mini"):
+            key = f"{skill}-{tier}"
+            solver_pool[key] = _or(MODEL_BINDING[tier], SolverOutput)
+
+    verifier_pool = {
+        "fast":  _or(MODEL_BINDING["fast"], VerifierOutput),
+        "haiku": _or(MODEL_BINDING["haiku"], VerifierOutput),
+        "skip":  _skip_runnable(VerifierOutput(verdict="supported", ungrounded_claims=[])),
+    }
+
+    evaluator_pool = {
+        "default": _or(MODEL_BINDING["mini"], EvaluatorOutput),
+    }
+
     return {
-        "planner": {
-            "fast": wrap("openai/gpt-4o-mini", PlannerOutput),
-            "deep": wrap("anthropic/claude-sonnet-4", PlannerOutput),
-        },
-        "memory": {
-            "cheap": wrap("meta-llama/llama-3.3-70b-instruct", MemoryOutput),
-            "solid": wrap("openai/gpt-4o-mini", MemoryOutput),
-        },
-        "solver": {
-            "cheap":    wrap("meta-llama/llama-3.3-70b-instruct", SolverOutput),
-            "balanced": wrap("openai/gpt-4o", SolverOutput),
-            "deep":     wrap("anthropic/claude-sonnet-4", SolverOutput),
-        },
-        "critic": {
-            "cheap": wrap("openai/gpt-4o-mini", CriticOutput),
-            "solid": wrap("openai/gpt-4o", CriticOutput),
-        },
-        "verifier": {
-            "cheap": wrap("openai/gpt-4o-mini", VerifierOutput),
-            "solid": wrap("openai/gpt-4o", VerifierOutput),
-        },
-        "evaluator": {
-            "default": wrap("openai/gpt-4o-mini", EvaluatorOutput),
-        },
+        "planner":   planner_pool,
+        "memory":    memory_pool,
+        "solver":    solver_pool,
+        "verifier":  verifier_pool,
+        "evaluator": evaluator_pool,
     }
 
 
@@ -120,7 +163,7 @@ def _render_corpus_subset(doc_ids: list[str]) -> str:
     return "\n\n".join(f"[{d.id}]\n{d.text}" for d in docs)
 
 
-def build_graph(pools: dict[str, dict[str, Any]]):
+def build_graph(pools: dict[str, dict[str, Any]], *, max_revisions: int = 2):
     def _trace(node: str, model: Any) -> dict:
         cfg = getattr(model, "config", None) or {}
         meta = cfg.get("metadata") or {}
@@ -132,40 +175,35 @@ def build_graph(pools: dict[str, dict[str, Any]]):
             ("system", PLANNER_SYS),
             ("human", format_planner_input(state["user_task"])),
         ])
-        return {"goal": r.goal, "subproblem": r.subproblem, "trace": [_trace("planner", model)]}
+        return {"goal": r.goal, "subproblem": r.subproblem,
+                "trace": [_trace("planner", model)]}
 
     @agensflow(pool=pools["memory"])
     async def memory(state: SecurityMASState, model, config=None):
-        corpus_str = _render_corpus_subset(state.get("corpus_doc_ids", []))
-        r: MemoryOutput = await model.ainvoke([
-            ("system", MEMORY_SYS.format(corpus=corpus_str)),
+        payload_msgs = [
+            ("system", MEMORY_SYS.format(corpus=_render_corpus_subset(
+                state.get("corpus_doc_ids", [])))),
             ("human", format_memory_input(state["subproblem"])),
-        ])
+        ]
+        r = await model.ainvoke(payload_msgs)
         return {"evidence": [e.model_dump() for e in r.evidence],
                 "trace": [_trace("memory", model)]}
 
     @agensflow(pool=pools["solver"])
     async def solver(state: SecurityMASState, model, config=None):
+        cfg = getattr(model, "config", None) or {}
+        action = (cfg.get("metadata") or {}).get("agensflow_action", "concise-haiku")
+        skill = action.split("-", 1)[0] if "-" in action else "concise"
+        system = SOLVER_SYSTEMS.get(skill, SOLVER_SYSTEMS["concise"])
+
         ev = [EvidenceItem(**e) for e in state.get("evidence", [])]
         r: SolverOutput = await model.ainvoke([
-            ("system", SOLVER_SYS),
+            ("system", system),
             ("human", format_solver_input(state["subproblem"], ev)),
         ])
         return {"draft_answer": r.draft_answer,
                 "solver_reasoning": r.reasoning,
                 "trace": [_trace("solver", model)]}
-
-    @agensflow(pool=pools["critic"])
-    async def critic(state: SecurityMASState, model, config=None):
-        r: CriticOutput = await model.ainvoke([
-            ("system", CRITIC_SYS),
-            ("human", format_critic_input(state["subproblem"],
-                                          state["draft_answer"],
-                                          state["solver_reasoning"])),
-        ])
-        return {"reasoning_score": r.reasoning_score,
-                "reasoning_issues": list(r.reasoning_issues),
-                "trace": [_trace("critic", model)]}
 
     @agensflow(pool=pools["verifier"])
     async def verifier(state: SecurityMASState, model, config=None):
@@ -179,33 +217,45 @@ def build_graph(pools: dict[str, dict[str, Any]]):
                 "ungrounded_claims": list(r.ungrounded_claims),
                 "trace": [_trace("verifier", model)]}
 
+    def verifier_gate(state: SecurityMASState) -> str:
+        verdict = state.get("verifier_verdict", "supported")
+        revs = state.get("revision_count", 0)
+        if verdict == "unsupported" and revs < max_revisions:
+            return "bump_revision"
+        return "evaluator"
+
+    async def bump_revision(state: SecurityMASState):
+        return {"revision_count": state.get("revision_count", 0) + 1}
+
     @agensflow(pool=pools["evaluator"])
     async def evaluator(state: SecurityMASState, model, config=None):
         r: EvaluatorOutput = await model.ainvoke([
             ("system", EVALUATOR_SYS),
-            ("human", format_evaluator_input(state["goal"], state["draft_answer"],
-                                             state.get("reasoning_score", 0.0),
-                                             state.get("verifier_verdict", "unknown"))),
+            ("human", format_evaluator_input(
+                state["goal"], state["draft_answer"],
+                state.get("verifier_verdict", "unknown"))),
         ])
         return {"final_answer": r.final_answer,
                 "evaluator_reasoning": r.merged_reasoning,
                 "trace": [_trace("evaluator", model)]}
 
     graph = StateGraph(SecurityMASState)
-    graph.add_node("planner",   planner)
-    graph.add_node("memory",    memory)
-    graph.add_node("solver",    solver)
-    graph.add_node("critic",    critic)
-    graph.add_node("verifier",  verifier)
-    graph.add_node("evaluator", evaluator)
+    graph.add_node("planner",       planner)
+    graph.add_node("memory",        memory)
+    graph.add_node("solver",        solver)
+    graph.add_node("verifier",      verifier)
+    graph.add_node("bump_revision", bump_revision)
+    graph.add_node("evaluator",     evaluator)
 
-    graph.add_edge(START,       "planner")
-    graph.add_edge("planner",   "memory")
-    graph.add_edge("memory",    "solver")
-    graph.add_edge("solver",    "critic")
-    graph.add_edge("solver",    "verifier")
-    graph.add_edge("critic",    "evaluator")
-    graph.add_edge("verifier",  "evaluator")
+    graph.add_edge(START,           "planner")
+    graph.add_edge("planner",       "memory")
+    graph.add_edge("memory",        "solver")
+    graph.add_edge("solver",        "verifier")
+    graph.add_conditional_edges(
+        "verifier", verifier_gate,
+        {"bump_revision": "bump_revision", "evaluator": "evaluator"},
+    )
+    graph.add_edge("bump_revision", "solver")
     graph.add_edge("evaluator", END)
 
     return graph.compile(checkpointer=InMemorySaver())

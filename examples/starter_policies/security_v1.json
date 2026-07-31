@@ -1,0 +1,113 @@
+{
+  "contract_version": "v1",
+  "policy": {
+    "planner": {
+      "default": {
+        "visits": 20,
+        "reward_mean": 0.41000600208768273,
+        "reward_m2": 1.0293362723875363,
+        "failure_count": 0
+      }
+    },
+    "memory": {
+      "use": {
+        "visits": 20,
+        "reward_mean": 0.41556356044538745,
+        "reward_m2": 0.9313061338719947,
+        "failure_count": 0
+      },
+      "skip": {
+        "visits": 20,
+        "reward_mean": 0.40019522921108736,
+        "reward_m2": 1.2213705594928193,
+        "failure_count": 0
+      }
+    },
+    "solver": {
+      "concise-haiku": {
+        "visits": 20,
+        "reward_mean": 0.41236607142857146,
+        "reward_m2": 0.9160000206751308,
+        "failure_count": 0
+      },
+      "concise-fast": {
+        "visits": 20,
+        "reward_mean": 0.4140252926421406,
+        "reward_m2": 0.887142474716096,
+        "failure_count": 0
+      },
+      "concise-mini": {
+        "visits": 20,
+        "reward_mean": 0.4065346929824562,
+        "reward_m2": 0.9761471850178516,
+        "failure_count": 0
+      },
+      "cot-haiku": {
+        "visits": 20,
+        "reward_mean": 0.39721218411552334,
+        "reward_m2": 0.9445895070941243,
+        "failure_count": 0
+      },
+      "cot-fast": {
+        "visits": 20,
+        "reward_mean": 0.40473308566433563,
+        "reward_m2": 0.9596856759323885,
+        "failure_count": 0
+      },
+      "cot-mini": {
+        "visits": 20,
+        "reward_mean": 0.39254811320754734,
+        "reward_m2": 0.9190882656835176,
+        "failure_count": 0
+      },
+      "evidence-haiku": {
+        "visits": 20,
+        "reward_mean": 0.39984768700787426,
+        "reward_m2": 0.9296556987242021,
+        "failure_count": 0
+      },
+      "evidence-fast": {
+        "visits": 20,
+        "reward_mean": 0.39769822834645685,
+        "reward_m2": 0.9679211717384062,
+        "failure_count": 0
+      },
+      "evidence-mini": {
+        "visits": 20,
+        "reward_mean": 0.42342844202898566,
+        "reward_m2": 0.9608347790882295,
+        "failure_count": 0
+      }
+    },
+    "verifier": {
+      "fast": {
+        "visits": 20,
+        "reward_mean": 0.39960397727272734,
+        "reward_m2": 0.9007545478086261,
+        "failure_count": 0
+      },
+      "haiku": {
+        "visits": 20,
+        "reward_mean": 0.3912212942477878,
+        "reward_m2": 0.949870820065503,
+        "failure_count": 1
+      },
+      "skip": {
+        "visits": 20,
+        "reward_mean": 0.40121337548638136,
+        "reward_m2": 0.9965412392113246,
+        "failure_count": 0
+      }
+    },
+    "evaluator": {
+      "default": {
+        "visits": 20,
+        "reward_mean": 0.3761095323741007,
+        "reward_m2": 1.1244292362222443,
+        "failure_count": 0
+      }
+    }
+  },
+  "n_signatures": 5,
+  "n_actions": 16
+}
