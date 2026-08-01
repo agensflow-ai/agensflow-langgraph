@@ -117,6 +117,12 @@ def _or(model_id: str, schema=None):
     The `default_headers` are load-bearing: OpenRouter uses HTTP-Referer +
     X-Title for app-tier attribution and routing. Without them, requests are
     served from a shared-throughput pool with materially tighter rate limits.
+
+    Structured-output cascade: some OpenRouter providers occasionally return
+    JSON that fails schema validation on function_calling (notably sonnet-5
+    returning a partial dict for nested schemas). We cascade
+    function_calling → json_schema → raw text + regex-extract JSON so a
+    single bad response doesn't fail the whole graph invocation.
     """
     key = os.environ.get("OPENROUTER_API_KEY")
     if not key:
@@ -132,7 +138,69 @@ def _or(model_id: str, schema=None):
             "X-Title": "AgensFlow security_domain",
         },
     )
-    return llm.with_structured_output(schema, method="function_calling") if schema else llm
+    if schema is None:
+        return llm
+
+    import json as _json
+    import re as _re
+    fc = llm.with_structured_output(schema, method="function_calling")
+    js = llm.with_structured_output(schema, method="json_schema")
+
+    async def _raw_parse(msgs, config=None):
+        """Third fallback: raw text response, extract JSON, construct schema."""
+        resp = await llm.ainvoke(msgs, config=config)
+        text = getattr(resp, "content", None) or str(resp)
+        m = _re.search(r"\{.*\}", text, _re.DOTALL)
+        if not m:
+            raise ValueError(f"no JSON object in raw response: {text[:200]}")
+        return schema.model_validate(_json.loads(m.group(0)))
+
+    class _StructuredShim:
+        async def ainvoke(self, msgs, config=None):
+            try:
+                return await fc.ainvoke(msgs, config=config)
+            except Exception as e_fc:
+                try:
+                    return await js.ainvoke(msgs, config=config)
+                except Exception:
+                    try:
+                        return await _raw_parse(msgs, config=config)
+                    except Exception:
+                        raise e_fc
+
+        # Support LangChain's Runnable interface expected by @agensflow's
+        # .with_config(callbacks=[...], metadata={...}) binding step.
+        def with_config(self, **kwargs):
+            new_fc = fc.with_config(**kwargs)
+            new_js = js.with_config(**kwargs)
+            new_llm = llm.with_config(**kwargs)
+
+            async def _raw_parse_bound(msgs, config=None):
+                resp = await new_llm.ainvoke(msgs, config=config)
+                text = getattr(resp, "content", None) or str(resp)
+                m = _re.search(r"\{.*\}", text, _re.DOTALL)
+                if not m:
+                    raise ValueError(f"no JSON in raw response: {text[:200]}")
+                return schema.model_validate(_json.loads(m.group(0)))
+
+            class _BoundShim:
+                async def ainvoke(self, msgs, config=None):
+                    try:
+                        return await new_fc.ainvoke(msgs, config=config)
+                    except Exception as e_fc:
+                        try:
+                            return await new_js.ainvoke(msgs, config=config)
+                        except Exception:
+                            try:
+                                return await _raw_parse_bound(msgs, config=config)
+                            except Exception:
+                                raise e_fc
+
+                # Preserve config metadata for _trace() introspection
+                config = {"metadata": (kwargs.get("metadata") or {})}
+            return _BoundShim()
+
+    return _StructuredShim()
 
 
 def _skip_runnable(default_output: Any):
